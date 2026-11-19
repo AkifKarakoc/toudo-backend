@@ -51,7 +51,7 @@ public class Place extends BaseEntity {
     @Column(length = 30)
     private String phone;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "text")
     private String website;
 
     @Column(name = "opening_hours", columnDefinition = "text")
@@ -65,7 +65,7 @@ public class Place extends BaseEntity {
     @Builder.Default
     private Integer reviewCount = 0;
 
-    @Column(name = "photo_url", length = 500)
+    @Column(name = "photo_url", columnDefinition = "text")
     private String photoUrl;
 
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)

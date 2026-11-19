@@ -81,6 +81,111 @@ public class ChatKnowledgeService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public String buildDemoReply(List<ChatMessage> conversation, String language) {
+        boolean english = language != null && language.equalsIgnoreCase("en");
+        String userQuery = latestUserMessage(conversation);
+        List<String> tokens = tokenize(userQuery);
+
+        try {
+            List<Place> places = tokens.isEmpty() ? List.of() : rankPlaces(tokens);
+            List<Route> routes = tokens.isEmpty() ? List.of() : rankRoutes(tokens);
+            List<Quest> quests = tokens.isEmpty() ? List.of() : rankQuests(tokens);
+
+            boolean matchedDirectly = !(places.isEmpty() && routes.isEmpty() && quests.isEmpty());
+            if (!matchedDirectly) {
+                places = topActivePlaces(4);
+                routes = routeRepository.findByIsActiveTrue().stream().limit(2).toList();
+                quests = questRepository.findByIsActiveTrue().stream().limit(2).toList();
+            }
+
+            if (places.isEmpty() && routes.isEmpty() && quests.isEmpty()) {
+                return english
+                        ? "No places, routes, or quests are available in the database yet. Start with SEED_DEMO_DATA=true to load Izmir demo data."
+                        : "Veritabanında henüz mekan, rota veya görev kaydı bulunmuyor. İzmir demo verilerini yüklemek için SEED_DEMO_DATA=true ile başlatabilirsiniz.";
+            }
+
+            StringBuilder reply = new StringBuilder();
+            if (english) {
+                reply.append(matchedDirectly
+                        ? "Here are matching Izmir recommendations from the TouDo database:\n"
+                        : "Here are popular Izmir highlights you can explore right now:\n");
+                appendDemoPlaces(reply, places, true);
+                appendDemoRoutes(reply, routes, true);
+                appendDemoQuests(reply, quests, true);
+                reply.append("\n[Demo Mode: generated directly from PostgreSQL seed data. Set AI_PROVIDER=ollama or gemini for live LLM responses.]");
+            } else {
+                reply.append(matchedDirectly
+                        ? "TouDo veritabanında isteğinizle eşleşen İzmir önerileri:\n"
+                        : "İzmir'de keşfedebileceğiniz popüler durak, rota ve görev önerileri:\n");
+                appendDemoPlaces(reply, places, false);
+                appendDemoRoutes(reply, routes, false);
+                appendDemoQuests(reply, quests, false);
+                reply.append("\n[Demo Modu: Yanıt PostgreSQL veritabanındaki İzmir kayıtlarından oluşturuldu. Canlı yapay zeka için AI_PROVIDER=ollama veya gemini ayarlayabilirsiniz.]");
+            }
+            return reply.toString();
+        } catch (Exception e) {
+            log.warn("Failed to build demo chat reply: {}", e.getMessage());
+            return english
+                    ? "Could not load Izmir recommendations right now. Please try again shortly."
+                    : "Şu anda İzmir önerileri yüklenemedi. Lütfen biraz sonra tekrar deneyin.";
+        }
+    }
+
+    private List<Place> topActivePlaces(int limit) {
+        return placeRepository.findByIsActiveTrue().stream()
+                .sorted(Comparator
+                        .comparing((Place p) -> Objects.requireNonNullElse(p.getPopularityScore(), 0), Comparator.reverseOrder())
+                        .thenComparing(p -> Objects.requireNonNullElse(p.getAvgRating(), 0.0), Comparator.reverseOrder()))
+                .limit(limit)
+                .toList();
+    }
+
+    private void appendDemoPlaces(StringBuilder reply, List<Place> places, boolean english) {
+        if (places.isEmpty()) return;
+        reply.append(english ? "\nPlaces:\n" : "\nMekanlar:\n");
+        for (Place place : places.stream().limit(4).toList()) {
+            String name = english
+                    ? firstNonBlank(place.getNameEn(), place.getName())
+                    : firstNonBlank(place.getNameTr(), place.getName());
+            reply.append("- ").append(name);
+            if (place.getAddress() != null && !place.getAddress().isBlank()) {
+                reply.append(" (").append(place.getAddress()).append(")");
+            }
+            if (place.getAvgRating() != null) {
+                reply.append(" | ★ ").append(String.format(Locale.US, "%.1f", place.getAvgRating()));
+            }
+            if (place.getDescription() != null && !place.getDescription().isBlank()) {
+                reply.append(" — ").append(shorten(place.getDescription(), 110));
+            }
+            reply.append("\n");
+        }
+    }
+
+    private void appendDemoRoutes(StringBuilder reply, List<Route> routes, boolean english) {
+        if (routes.isEmpty()) return;
+        reply.append(english ? "\nRoutes:\n" : "\nRotalar:\n");
+        for (Route route : routes.stream().limit(2).toList()) {
+            reply.append("- ").append(route.getName());
+            if (route.getEstimatedMinutes() != null) {
+                reply.append(" (~").append(route.getEstimatedMinutes()).append(english ? " min" : " dk").append(")");
+            }
+            reply.append(" | +").append(Objects.requireNonNullElse(route.getExpReward(), 0)).append(" XP\n");
+        }
+    }
+
+    private void appendDemoQuests(StringBuilder reply, List<Quest> quests, boolean english) {
+        if (quests.isEmpty()) return;
+        reply.append(english ? "\nQuests:\n" : "\nGörevler:\n");
+        for (Quest quest : quests.stream().limit(2).toList()) {
+            reply.append("- ").append(quest.getTitle());
+            if (quest.getRegion() != null && !quest.getRegion().isBlank()) {
+                reply.append(" (").append(quest.getRegion()).append(")");
+            }
+            reply.append(" | +").append(Objects.requireNonNullElse(quest.getExpReward(), 0)).append(" XP\n");
+        }
+    }
+
     private String latestUserMessage(List<ChatMessage> conversation) {
         if (conversation == null) {
             return "";
@@ -146,6 +251,9 @@ public class ChatKnowledgeService {
                 String.join(" ", place.getKeywords() == null ? List.of() : place.getKeywords())
         ));
         int score = scoreText(haystack, tokens);
+        if (score == 0) {
+            return 0;
+        }
         score += Math.min(3, Math.max(0, Objects.requireNonNullElse(place.getPopularityScore(), 0) / 3));
         score += Math.min(2, Math.max(0, Objects.requireNonNullElse(place.getReviewCount(), 0) / 5));
         return score;

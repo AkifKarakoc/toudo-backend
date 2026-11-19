@@ -5,12 +5,11 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
-    <changeSet id="016-add-badge-tier" author="tourguide">
-        <addColumn tableName="badges">
-            <column name="tier" type="varchar(16)" defaultValue="BRONZE">
-                <constraints nullable="false"/>
-            </column>
-        </addColumn>
+    <changeSet id="025-places-external-id-unique" author="tourguide">
+        <addUniqueConstraint
+                tableName="places"
+                columnNames="external_id, source_api"
+                constraintName="uk_places_external_id_source_api"/>
     </changeSet>
 
 </databaseChangeLog>

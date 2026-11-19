@@ -28,5 +28,7 @@
     <include file="db/changelog/changes/022-replace-age-group-with-birth-date.xml"/>
     <include file="db/changelog/changes/023-add-phone-country-code-to-users.xml"/>
     <include file="db/changelog/changes/024-increase-place-image-url-length.xml"/>
+    <include file="db/changelog/changes/025-places-external-id-unique.xml"/>
+    <include file="db/changelog/changes/026-places-text-columns.xml"/>
 
 </databaseChangeLog>

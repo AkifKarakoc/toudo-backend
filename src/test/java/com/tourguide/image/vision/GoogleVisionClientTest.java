@@ -185,18 +185,18 @@ class GoogleVisionClientTest {
     }
 
     @Test
-    void constructor_blankApiKey_throwsIllegalArgumentException() {
-        assertThatThrownBy(() -> new GoogleVisionClient(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Google Vision API key");
+    void isConfigured_returnsFalseForBlankKeysAndThrows503OnDetectAll() {
+        assertThat(new GoogleVisionClient(null).isConfigured()).isFalse();
+        assertThat(new GoogleVisionClient("").isConfigured()).isFalse();
+        assertThat(new GoogleVisionClient("   ").isConfigured()).isFalse();
+        assertThat(new GoogleVisionClient("dummy-api-key").isConfigured()).isTrue();
 
-        assertThatThrownBy(() -> new GoogleVisionClient(""))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Google Vision API key");
-
-        assertThatThrownBy(() -> new GoogleVisionClient("   "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Google Vision API key");
+        GoogleVisionClient unconfigured = new GoogleVisionClient("");
+        GoogleVisionException exception = catchThrowableOfType(
+                () -> unconfigured.detectAll("image".getBytes()),
+                GoogleVisionException.class);
+        assertThat(exception).isNotNull();
+        assertThat(exception.getStatusCode()).isEqualTo(503);
     }
 
     @Test

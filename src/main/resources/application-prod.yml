@@ -35,10 +35,13 @@ minio:
 # Google Vision API Configuration
 google:
   vision:
-    api-key: ${GOOGLE_VISION_API_KEY}
+    api-key: ${GOOGLE_VISION_API_KEY:}
     confidence-threshold: ${GOOGLE_VISION_CONFIDENCE_THRESHOLD:0.5}
     max-distance-km: ${GOOGLE_VISION_MAX_DISTANCE_KM:1.0}
     fallback-max-distance-km: ${GOOGLE_VISION_FALLBACK_MAX_DISTANCE_KM:2.0}
+  places:
+    api-key: ${GOOGLE_PLACES_API_KEY:}
+    base-url: ${GOOGLE_PLACES_BASE_URL:https://places.googleapis.com}
 
 # JWT Configuration
 jwt:
@@ -46,10 +49,10 @@ jwt:
   access-token-expiration: 3600000      # 1 hour
   refresh-token-expiration: 604800000   # 7 days
 
-# AI Service Configuration
+# AI Service Configuration (demo | ollama | gemini)
 ai-service:
-  provider: ${AI_PROVIDER:ollama}
-  base-url: ${AI_SERVICE_URL:http://159.65.127.73:8000}
+  provider: ${AI_PROVIDER:demo}
+  base-url: ${AI_SERVICE_URL:http://localhost:8000}
   timeout: 30000
 
 gemini:
@@ -57,6 +60,9 @@ gemini:
   base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
   model-name: ${GEMINI_MODEL_NAME:gemini-2.0-flash}
   temperature: ${GEMINI_TEMPERATURE:0.4}
+
+app:
+  seed-demo-data: ${SEED_DEMO_DATA:false}
 
 # Pilot Zone Configuration (Izmir bounds)
 # Pilot Zone Configuration (Izmir + Efes bounds)

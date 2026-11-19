@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "ai-service.provider", havingValue = "ollama", matchIfMissing = true)
+@ConditionalOnProperty(name = "ai-service.provider", havingValue = "ollama")
 public class OllamaAiModelClient implements AiModelClient {
 
     private final ChatModel chatModel;

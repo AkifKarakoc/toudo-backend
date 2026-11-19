@@ -3,9 +3,9 @@ spring:
     import: optional:file:.env[.properties]
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:db-postgresql-fra1-24379-do-user-36243951-0.l.db.ondigitalocean.com}:${DB_PORT:25060}/${DB_NAME:defaultdb}?sslmode=require&sslrootcert=${DB_SSLROOTCERT:./ca-certificate.crt}
-    username: ${DB_USER:doadmin}
-    password: ${DO_DB_PASSWORD:${DB_PASSWORD:}}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:tourguide}
+    username: ${DB_USER:tourguide}
+    password: ${DB_PASSWORD:tourguide123}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -18,34 +18,37 @@ spring:
 
 # MinIO Configuration
 minio:
-  endpoint: ${MINIO_ENDPOINT:http://192.168.1.11:9000}
-  public-url: ${MINIO_PUBLIC_URL:http://192.168.1.11:9000}
-  access-key: ${MINIO_ACCESS_KEY}
-  secret-key: ${MINIO_SECRET_KEY}
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
   buckets:
     profile-photos: profile-photos
     place-images: place-images
     badge-icons: badge-icons
     quest-verifications: quest-verifications
 
-# Google Vision API Configuration
+# Google Vision & Places API Configuration (optional in local dev)
 google:
   vision:
-    api-key: ${GOOGLE_VISION_API_KEY}
+    api-key: ${GOOGLE_VISION_API_KEY:}
     confidence-threshold: ${GOOGLE_VISION_CONFIDENCE_THRESHOLD:0.5}
     max-distance-km: ${GOOGLE_VISION_MAX_DISTANCE_KM:1.0}
     fallback-max-distance-km: ${GOOGLE_VISION_FALLBACK_MAX_DISTANCE_KM:2.0}
+  places:
+    api-key: ${GOOGLE_PLACES_API_KEY:}
+    base-url: ${GOOGLE_PLACES_BASE_URL:https://places.googleapis.com}
 
-# JWT Configuration
+# JWT Configuration (dev-only fallback; set JWT_SECRET in production)
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:dG91ZG8tZGV2LWp3dC1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9uLTIwMjY=}
   access-token-expiration: 86400000
   refresh-token-expiration: 604800000
 
-# AI Service Configuration
+# AI Service Configuration (demo | ollama | gemini)
 ai-service:
-  provider: ${AI_PROVIDER:ollama}
-  base-url: ${AI_SERVICE_URL:http://159.65.127.73:8000}
+  provider: ${AI_PROVIDER:demo}
+  base-url: ${AI_SERVICE_URL:http://localhost:8000}
   timeout: 30000
 
 gemini:
@@ -54,8 +57,11 @@ gemini:
   model-name: ${GEMINI_MODEL_NAME:gemini-2.0-flash}
   temperature: ${GEMINI_TEMPERATURE:0.4}
 
-# Pilot Zone Configuration (Izmir bounds)
-# Pilot Zone Configuration (Izmir + Efes bounds)
+# Demo Seed Data
+app:
+  seed-demo-data: ${SEED_DEMO_DATA:true}
+
+# Pilot Zone Configuration (Izmir + Ephesus bounds)
 pilot-zone:
   enabled: false
   min-latitude: 37.90

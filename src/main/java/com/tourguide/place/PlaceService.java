@@ -1,6 +1,7 @@
 package com.tourguide.place;
 
 import com.tourguide.admin.contenteditor.dto.PlaceImageResponse;
+import com.tourguide.chat.places.GooglePlacesApiClient;
 import com.tourguide.common.exception.ResourceNotFoundException;
 import com.tourguide.common.util.CoordinateUtil;
 import com.tourguide.common.util.GeohashUtil;
@@ -8,6 +9,7 @@ import com.tourguide.common.util.MinioUtil;
 import com.tourguide.admin.contenteditor.dto.PlaceMapPointResponse;
 import com.tourguide.place.dto.PlaceDetailResponse;
 import com.tourguide.place.dto.PlaceResponse;
+import com.tourguide.place.places.PlaceImportService;
 import com.tourguide.review.ReviewRepository;
 import com.tourguide.review.ReviewStatus;
 import com.tourguide.user.IUserService;
@@ -18,9 +20,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -36,13 +40,15 @@ public class PlaceService implements IPlaceService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ReviewRepository reviewRepository;
     private final MinioUtil minioUtil;
+    private final GooglePlacesApiClient googlePlacesApiClient;
+    private final PlaceImportService placeImportService;
 
     private static final String CACHE_PREFIX = "query:geohash:";
     private static final String PLACE_DETAIL_CACHE_PREFIX = "place:detail:";
     private static final int GEOHASH_PREFIX_LEN = 5;
     private static final long CACHE_TTL = 3600;
     private static final long PLACE_DETAIL_CACHE_TTL = 1800;
-    private static final int DEFAULT_RADIUS = 5000;
+    private static final int DEFAULT_RADIUS = 50000;
     private static final int DEFAULT_LIMIT = 20;
     private static final String PLACE_IMAGES_BUCKET = "place-images";
 
@@ -64,7 +70,12 @@ public class PlaceService implements IPlaceService {
                 : geohash;
         String cacheKey = CACHE_PREFIX + geohashPrefix + ":" + searchRadius + ":" + (category != null ? category : "all") + ":" + searchLimit;
 
-        List<PlaceResponse> cached = (List<PlaceResponse>) redisTemplate.opsForValue().get(cacheKey);
+        List<PlaceResponse> cached = null;
+        try {
+            cached = (List<PlaceResponse>) redisTemplate.opsForValue().get(cacheKey);
+        } catch (Exception e) {
+            log.warn("Failed to read nearby places cache: {}", e.getMessage());
+        }
         if (cached != null) {
             if (userId != null) {
                 cached.forEach(p -> p.setIsFavorited(userService.isFavorited(userId, p.getId())));
@@ -72,12 +83,7 @@ public class PlaceService implements IPlaceService {
             return cached;
         }
 
-        List<Place> places;
-        if (category != null && !category.isEmpty()) {
-            places = placeRepository.findNearbyByCategory(lat, lng, searchRadius, searchLimit, category);
-        } else {
-            places = placeRepository.findNearby(lat, lng, searchRadius, searchLimit);
-        }
+        List<Place> places = fetchNearbyFromDbOrPlaces(lat, lng, searchRadius, searchLimit, category);
 
         List<PlaceResponse> responses = places.stream()
                 .map(place -> {
@@ -103,7 +109,12 @@ public class PlaceService implements IPlaceService {
     @Transactional(readOnly = true)
     public PlaceDetailResponse findById(UUID placeId, UUID userId) {
         String cacheKey = PLACE_DETAIL_CACHE_PREFIX + placeId.toString();
-        PlaceDetailResponse cached = (PlaceDetailResponse) redisTemplate.opsForValue().get(cacheKey);
+        PlaceDetailResponse cached = null;
+        try {
+            cached = (PlaceDetailResponse) redisTemplate.opsForValue().get(cacheKey);
+        } catch (Exception e) {
+            log.warn("Failed to read place detail cache: {}", e.getMessage());
+        }
         if (cached != null) {
             if (userId != null) {
                 cached.setIsFavorited(userService.isFavorited(userId, placeId));
@@ -150,6 +161,16 @@ public class PlaceService implements IPlaceService {
 
     @Transactional(readOnly = true)
     public List<PlaceResponse> search(String query, UUID userId) {
+        if (googlePlacesApiClient.isConfigured()) {
+            try {
+                List<Map<String, Object>> googlePlaces = googlePlacesApiClient.textSearch(
+                        query, Optional.empty(), Optional.empty(), Optional.empty());
+                placeImportService.importPlaces(googlePlaces);
+            } catch (Exception e) {
+                log.warn("Failed to fetch search results from Google Places API: {}", e.getMessage());
+            }
+        }
+
         List<Place> places = placeRepository.search(query);
 
         return places.stream()
@@ -190,6 +211,55 @@ public class PlaceService implements IPlaceService {
                     .build())
                 .collect(Collectors.toList());
             }
+
+    private List<Place> fetchNearbyFromDbOrPlaces(double lat, double lng, int radius, int limit, String category) {
+        List<Place> places;
+        if (category != null && !category.isEmpty()) {
+            places = placeRepository.findNearbyByCategory(lat, lng, radius, limit, category);
+        } else {
+            places = placeRepository.findNearby(lat, lng, radius, limit);
+        }
+        log.info("findNearby DB results: lat={}, lng={}, radius={}, category={}, count={}", lat, lng, radius, category, places.size());
+
+        if (!googlePlacesApiClient.isConfigured()) {
+            return places;
+        }
+
+        try {
+            int placesRadius = Math.min(radius, 50000);
+            List<String> types = category != null ? categoryToPlacesTypes(category) : List.of();
+            log.info("Fetching from Google Places API: radius={}, types={}", placesRadius, types);
+            List<Map<String, Object>> googlePlaces = googlePlacesApiClient.searchNearby(lat, lng, placesRadius, types);
+            log.info("Google Places API returned {} places", googlePlaces.size());
+            List<Place> imported = placeImportService.importPlaces(googlePlaces);
+            log.info("Imported {} places into DB", imported.size());
+        } catch (Exception e) {
+            log.warn("Failed to fetch nearby places from Google Places API: {}", e.getMessage(), e);
+            return places;
+        }
+
+        if (category != null && !category.isEmpty()) {
+            places = placeRepository.findNearbyByCategory(lat, lng, radius, limit, category);
+        } else {
+            places = placeRepository.findNearby(lat, lng, radius, limit);
+        }
+        log.info("findNearby DB results after import: count={}", places.size());
+        return places;
+    }
+
+    private List<String> categoryToPlacesTypes(String category) {
+        if (category == null) return List.of();
+        return switch (category.toUpperCase()) {
+            case "RESTAURANT" -> List.of("restaurant");
+            case "CAFE" -> List.of("cafe");
+            case "BAR" -> List.of("bar");
+            case "TOURIST_ATTRACTION" -> List.of("tourist_attraction", "museum", "historical_landmark");
+            case "HOTEL" -> List.of("lodging", "hotel");
+            case "PARK" -> List.of("park");
+            case "SHOPPING" -> List.of("shopping_mall", "store");
+            default -> List.of();
+        };
+    }
 
     @Override
     public Place getPlaceEntity(UUID placeId) {

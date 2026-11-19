@@ -61,6 +61,17 @@ public class ImageService {
         log.debug("Uploaded image to MinIO: {}", imageUrl);
 
         try {
+            if (!googleVisionClient.isConfigured()) {
+                log.info("Google Vision API key is not configured; using GPS proximity fallback.");
+                return fallbackToNearestPlace(latitude, longitude, imageUrl)
+                        .orElseGet(() -> buildResponse(
+                                null,
+                                "Tanımlanamadı",
+                                0.0,
+                                "Google Vision API yapılandırılmadı ve yakında eşleşen yer bulunamadı.",
+                                imageUrl));
+            }
+
             log.debug("Calling Google Vision for image: {} bytes", imageBytes.length);
             GoogleVisionClient.VisionDetectionResult detectionResult = googleVisionClient.detectAll(imageBytes);
 
@@ -89,15 +100,9 @@ public class ImageService {
                 return buildResponse(place.getId(), place.getName(), confidence, description, imageUrl);
             }
 
-            Optional<Place> nearestPlace = findNearestPlace(latitude, longitude);
-            if (nearestPlace.isPresent()) {
-                Place place = nearestPlace.get();
-                String description = place.getDescription() != null
-                        ? place.getDescription()
-                        : "Yakındaki yer bulundu.";
-                log.info("Coordinate fallback selected place: {} (distance <= {} km)",
-                        place.getName(), fallbackMaxDistanceKm);
-                return buildResponse(place.getId(), place.getName(), 0.0, description, imageUrl);
+            Optional<ImageAnalysisResponse> nearestFallback = fallbackToNearestPlace(latitude, longitude, imageUrl);
+            if (nearestFallback.isPresent()) {
+                return nearestFallback.get();
             }
 
             if (!landmarks.isEmpty()) {
@@ -126,6 +131,20 @@ public class ImageService {
         return result.getSource() == PlaceMatcher.MatchSource.LANDMARK && result.getMatchedLandmark() != null
                 ? result.getMatchedLandmark().getConfidence()
                 : 0.0;
+    }
+
+    private Optional<ImageAnalysisResponse> fallbackToNearestPlace(double latitude, double longitude, String imageUrl) {
+        Optional<Place> nearestPlace = findNearestPlace(latitude, longitude);
+        if (nearestPlace.isEmpty()) {
+            return Optional.empty();
+        }
+        Place place = nearestPlace.get();
+        String description = place.getDescription() != null
+                ? place.getDescription()
+                : "Yakındaki yer bulundu.";
+        log.info("Coordinate fallback selected place: {} (distance <= {} km)",
+                place.getName(), fallbackMaxDistanceKm);
+        return Optional.of(buildResponse(place.getId(), place.getName(), 0.0, description, imageUrl));
     }
 
     private Optional<Place> findNearestPlace(double latitude, double longitude) {

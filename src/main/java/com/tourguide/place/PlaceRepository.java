@@ -25,7 +25,7 @@ public interface PlaceRepository extends JpaRepository<Place, UUID> {
                            @Param("limit") int limit);
 
     @Query(value = "SELECT * FROM places WHERE is_active = true " +
-            "AND (:category IS NULL OR category = :category) " +
+            "AND (:category IS NULL OR LOWER(category) = LOWER(:category)) " +
             "AND ST_DWithin(CAST(ST_MakePoint(longitude, latitude) AS geography), " +
             "CAST(ST_MakePoint(:lng, :lat) AS geography), :radius) " +
             "ORDER BY ST_Distance(CAST(ST_MakePoint(longitude, latitude) AS geography), " +

@@ -51,7 +51,7 @@ class ContentEditorRouteControllerTest {
         ContentEditorService contentEditorService = new ContentEditorService(
                 mock(IPlaceService.class),
                 mock(IQuestService.class),
-                mock(IRouteService.class),
+                routeService,
                 mock(IBadgeService.class),
                 placeRepository,
                 questRepository,

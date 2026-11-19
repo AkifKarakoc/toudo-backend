@@ -1,4 +1,5 @@
-# ⚠️ BU DOSYA ŞUAN KULLANILMAYACAK - İLERIDE DROPLET'E TAŞININCA KULLANILACAK
+> [!NOTE]
+> Production deployment reference for hosting the backend behind Nginx and Let's Encrypt HTTPS. For local development, see [README.md](./README.md) and `docker-compose.yml`.
 
 # HTTPS Setup Guide - TourGuide Backend
 

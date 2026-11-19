@@ -63,7 +63,7 @@ class ImageServiceTest {
 
     private final byte[] imageBytes = {1, 2, 3};
     private final String fileName = "minio-file.jpg";
-    private final String presignedUrl = "http://192.168.1.11:9000/place-images/photo.webp?X-Amz-Signature=abc";
+    private final String presignedUrl = "http://localhost:9000/place-images/photo.webp?X-Amz-Signature=abc";
     private MockMultipartFile photo;
 
     @BeforeEach
@@ -74,6 +74,7 @@ class ImageServiceTest {
         lenient().when(minioUtil.upload(anyString(), any(byte[].class), anyString())).thenReturn(fileName);
         lenient().when(minioUtil.getPresignedUrl(anyString(), anyString())).thenReturn(presignedUrl);
         lenient().when(placeRepository.findAll()).thenReturn(Collections.emptyList());
+        lenient().when(googleVisionClient.isConfigured()).thenReturn(true);
     }
 
     @Test
@@ -320,5 +321,30 @@ class ImageServiceTest {
                 .hasCauseInstanceOf(IOException.class);
 
         verify(minioUtil, never()).upload(anyString(), any(byte[].class), anyString());
+    }
+
+    @Test
+    void identifyImage_shouldFallbackToNearestPlace_whenVisionNotConfigured() {
+        // given
+        Place clockTower = Place.builder()
+                .name("Saat Kulesi")
+                .description("Konak Meydani")
+                .latitude(38.4189)
+                .longitude(27.1287)
+                .build();
+        clockTower.setId(UUID.randomUUID());
+
+        when(googleVisionClient.isConfigured()).thenReturn(false);
+        when(placeRepository.findAll()).thenReturn(List.of(clockTower));
+
+        // when
+        ImageAnalysisResponse response = imageService.identifyImage(photo, 38.4189, 27.1287, UUID.randomUUID());
+
+        // then
+        assertThat(response.getPlaceId()).isEqualTo(clockTower.getId());
+        assertThat(response.getPlaceName()).isEqualTo("Saat Kulesi");
+        assertThat(response.getConfidence()).isEqualTo(0.0);
+        assertThat(response.getDescription()).isEqualTo("Konak Meydani");
+        verify(googleVisionClient, never()).detectAll(any());
     }
 }

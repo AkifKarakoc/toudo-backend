@@ -13,7 +13,7 @@ import java.time.Duration;
 public class LocalAiConfig {
 
     @Bean
-    @ConditionalOnProperty(name = "ai-service.provider", havingValue = "ollama", matchIfMissing = true)
+    @ConditionalOnProperty(name = "ai-service.provider", havingValue = "ollama")
     public ChatModel localChatModel(
             @Value("${local-ai.ollama.base-url:http://localhost:11434}") String baseUrl,
             @Value("${local-ai.ollama.model-name:qwen3:8b}") String modelName,

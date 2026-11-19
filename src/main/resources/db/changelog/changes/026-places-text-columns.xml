@@ -5,6 +5,9 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
-    <!-- Bu dosyanın içeriği 012-add-indexes.xml ile birleştirildi. -->
+    <changeSet id="026-places-text-columns" author="tourguide">
+        <modifyDataType tableName="places" columnName="photo_url" newDataType="text"/>
+        <modifyDataType tableName="places" columnName="website" newDataType="text"/>
+    </changeSet>
 
 </databaseChangeLog>

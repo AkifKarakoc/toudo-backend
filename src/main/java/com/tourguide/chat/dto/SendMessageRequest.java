@@ -16,4 +16,8 @@ public class SendMessageRequest {
     @NotBlank(message = "Message content is required")
     @Size(max = 2000, message = "Message content must not exceed 2000 characters")
     private String content;
+
+    private Double latitude;
+
+    private Double longitude;
 }

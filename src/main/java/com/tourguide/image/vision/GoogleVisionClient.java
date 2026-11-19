@@ -38,15 +38,16 @@ public class GoogleVisionClient {
     private final HttpClient httpClient;
     private final JsonObjectParser jsonObjectParser;
 
-    public GoogleVisionClient(@Value("${google.vision.api-key}") String apiKey) {
-        if (!StringUtils.hasText(apiKey)) {
-            throw new IllegalArgumentException("Google Vision API key must not be null or blank");
-        }
-        this.apiKey = apiKey;
+    public GoogleVisionClient(@Value("${google.vision.api-key:}") String apiKey) {
+        this.apiKey = apiKey != null ? apiKey.trim() : "";
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(TIMEOUT)
                 .build();
         this.jsonObjectParser = new JsonObjectParser(GsonFactory.getDefaultInstance());
+    }
+
+    public boolean isConfigured() {
+        return StringUtils.hasText(this.apiKey);
     }
 
     public List<VisionLandmark> detectLandmarks(byte[] imageBytes) {
@@ -56,6 +57,9 @@ public class GoogleVisionClient {
     public VisionDetectionResult detectAll(byte[] imageBytes) {
         if (imageBytes == null || imageBytes.length == 0) {
             throw new IllegalArgumentException("imageBytes must not be null or empty");
+        }
+        if (!isConfigured()) {
+            throw new GoogleVisionException("Google Vision API key is not configured", 503);
         }
 
         String requestBody = buildRequestBody(imageBytes);

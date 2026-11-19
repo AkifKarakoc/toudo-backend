@@ -1,7 +1,6 @@
 #!/bin/bash
-# ⚠️ BU DOSYA ŞUAN KULLANILMAYACAK - İLERIDE DROPLET'E TAŞININCA KULLANILACAK
-# Production deployment + SSL sertifika otomasyon scripti.
-# Yerel geliştirme sırasında bu scripti çalıştırmayın.
+# Production deployment and Let's Encrypt SSL setup script.
+# Not intended for local development.
 
 set -e
 

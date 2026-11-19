@@ -1,6 +1,5 @@
-# ⚠️ BU DOSYA ŞUAN KULLANILMAYACAK - İLERIDE DROPLET'E TAŞININCA KULLANILACAK
-# Production ortamı için nginx + Let's Encrypt HTTPS yapılandırması içerir.
-# Yerel geliştirme sırasında bu dosyayı kullanmayın.
+# Production Docker Compose stack with Nginx reverse proxy and Let's Encrypt HTTPS.
+# For local development, use docker-compose.yml instead.
 
 version: '3.8'
 

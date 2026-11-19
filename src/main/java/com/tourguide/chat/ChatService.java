@@ -58,7 +58,11 @@ public class ChatService {
         messageRepository.save(userMessage);
 
         List<ChatMessage> conversation = messageRepository.findBySessionIdOrderBySentAtAsc(sessionId);
-        String aiResponse = aiChatService.generateReply(conversation, session.getLanguage());
+        String aiResponse = aiChatService.generateReply(
+                conversation,
+                session.getLanguage(),
+                Optional.ofNullable(request.getLatitude()),
+                Optional.ofNullable(request.getLongitude()));
 
         ChatMessage assistantMessage = ChatMessage.builder()
                 .sessionId(sessionId)

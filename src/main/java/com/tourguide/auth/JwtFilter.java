@@ -79,6 +79,11 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
     private boolean isTokenBlacklisted(String token) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + token));
+        } catch (Exception e) {
+            log.warn("Redis unavailable during token blacklist check: {}", e.getMessage());
+            return false;
+        }
     }
 }

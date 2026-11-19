@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -51,6 +52,26 @@ public class PlaceService implements IPlaceService {
     private static final int DEFAULT_RADIUS = 50000;
     private static final int DEFAULT_LIMIT = 20;
     private static final String PLACE_IMAGES_BUCKET = "place-images";
+
+    private static final List<String> RELIGIOUS_ALIASES = List.of(
+            "religious", "mosque", "cami", "kilise", "sinagog", "türbe"
+    );
+    private static final List<String> LANDMARK_ALIASES = List.of(
+            "landmark", "monument", "tourist_attraction", "tarihi_yapi", "kale",
+            "antik_alan", "konak", "kule", "çarşı", "hamam", "tarihi_otel", "sanayi_mirası"
+    );
+    private static final Map<String, List<String>> CATEGORY_ALIASES = Map.of(
+            "museum", List.of("museum", "müze"),
+            "religious", RELIGIOUS_ALIASES,
+            "mosque", RELIGIOUS_ALIASES,
+            "landmark", LANDMARK_ALIASES,
+            "monument", LANDMARK_ALIASES,
+            "tourist_attraction", LANDMARK_ALIASES,
+            "park", List.of("park"),
+            "beach", List.of("beach", "sahil_şeridi", "plaj"),
+            "cafe", List.of("cafe", "kafe", "kıraathane"),
+            "restaurant", List.of("restaurant", "restoran")
+    );
 
     @SuppressWarnings("unchecked")
     @Transactional(readOnly = true)
@@ -213,12 +234,7 @@ public class PlaceService implements IPlaceService {
             }
 
     private List<Place> fetchNearbyFromDbOrPlaces(double lat, double lng, int radius, int limit, String category) {
-        List<Place> places;
-        if (category != null && !category.isEmpty()) {
-            places = placeRepository.findNearbyByCategory(lat, lng, radius, limit, category);
-        } else {
-            places = placeRepository.findNearby(lat, lng, radius, limit);
-        }
+        List<Place> places = queryNearbyFromDb(lat, lng, radius, limit, category);
         log.info("findNearby DB results: lat={}, lng={}, radius={}, category={}, count={}", lat, lng, radius, category, places.size());
 
         if (!googlePlacesApiClient.isConfigured()) {
@@ -238,13 +254,21 @@ public class PlaceService implements IPlaceService {
             return places;
         }
 
-        if (category != null && !category.isEmpty()) {
-            places = placeRepository.findNearbyByCategory(lat, lng, radius, limit, category);
-        } else {
-            places = placeRepository.findNearby(lat, lng, radius, limit);
-        }
+        places = queryNearbyFromDb(lat, lng, radius, limit, category);
         log.info("findNearby DB results after import: count={}", places.size());
         return places;
+    }
+
+    private List<Place> queryNearbyFromDb(double lat, double lng, int radius, int limit, String category) {
+        if (category != null && !category.isBlank()) {
+            return placeRepository.findNearbyByCategories(lat, lng, radius, limit, expandCategoryAliases(category));
+        }
+        return placeRepository.findNearby(lat, lng, radius, limit);
+    }
+
+    List<String> expandCategoryAliases(String category) {
+        String normalized = category.trim().toLowerCase(Locale.ROOT);
+        return CATEGORY_ALIASES.getOrDefault(normalized, List.of(normalized));
     }
 
     private List<String> categoryToPlacesTypes(String category) {

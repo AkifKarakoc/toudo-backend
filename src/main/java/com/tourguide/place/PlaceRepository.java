@@ -37,6 +37,19 @@ public interface PlaceRepository extends JpaRepository<Place, UUID> {
                                      @Param("limit") int limit,
                                      @Param("category") String category);
 
+    @Query(value = "SELECT * FROM places WHERE is_active = true " +
+            "AND LOWER(category) IN (:categories) " +
+            "AND ST_DWithin(CAST(ST_MakePoint(longitude, latitude) AS geography), " +
+            "CAST(ST_MakePoint(:lng, :lat) AS geography), :radius) " +
+            "ORDER BY ST_Distance(CAST(ST_MakePoint(longitude, latitude) AS geography), " +
+            "CAST(ST_MakePoint(:lng, :lat) AS geography)) LIMIT :limit",
+            nativeQuery = true)
+    List<Place> findNearbyByCategories(@Param("lat") double lat,
+                                       @Param("lng") double lng,
+                                       @Param("radius") double radius,
+                                       @Param("limit") int limit,
+                                       @Param("categories") List<String> categories);
+
     @Query("SELECT p FROM Place p WHERE p.isActive = true " +
             "AND (LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(p.nameTr) LIKE LOWER(CONCAT('%', :query, '%')) " +

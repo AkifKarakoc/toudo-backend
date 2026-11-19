@@ -8,6 +8,23 @@ Spring Boot REST API powering **TouDo**, an AI-assisted city guide and gamified 
 
 ---
 
+## Mobile Showcase Preview
+
+<table>
+  <tr>
+    <td align="center"><img src="https://raw.githubusercontent.com/AkifKarakoc/toudo-mobile/master/docs/screenshots/home.png" width="210" alt="Home Screen" /><br /><sub><b>Home</b></sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/AkifKarakoc/toudo-mobile/master/docs/screenshots/nearby.png" width="210" alt="Nearby Places" /><br /><sub><b>Nearby Places</b></sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/AkifKarakoc/toudo-mobile/master/docs/screenshots/place_detail.png" width="210" alt="Place Detail" /><br /><sub><b>Place Detail</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="https://raw.githubusercontent.com/AkifKarakoc/toudo-mobile/master/docs/screenshots/routes.png" width="210" alt="Curated Routes" /><br /><sub><b>Curated Routes</b></sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/AkifKarakoc/toudo-mobile/master/docs/screenshots/quests.png" width="210" alt="Gamified Quests" /><br /><sub><b>Gamified Quests</b></sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/AkifKarakoc/toudo-mobile/master/docs/screenshots/ai_chat.png" width="210" alt="AI City Guide" /><br /><sub><b>AI City Guide</b></sub></td>
+  </tr>
+</table>
+
+---
+
 ## Key Features
 
 - **Geospatial Place Discovery (`PostGIS`):** Nearby POI search by radius, category, keyword, and popularity score with Redis caching and GeoHash indexing.

@@ -44,8 +44,13 @@ public class AiChatService {
             log.debug("AI prompt: {}", prompt);
             return aiModelClient.generate(prompt);
         } catch (Exception e) {
-            log.error("AI model call failed: {}", e.getMessage());
-            return FALLBACK_RESPONSE;
+            log.warn("AI model call failed ({}); falling back to database demo reply", e.getMessage());
+            try {
+                return chatKnowledgeService.buildDemoReply(conversation, language);
+            } catch (Exception fallbackError) {
+                log.error("Database demo fallback failed: {}", fallbackError.getMessage());
+                return FALLBACK_RESPONSE;
+            }
         }
     }
 

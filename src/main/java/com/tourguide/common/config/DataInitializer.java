@@ -110,6 +110,7 @@ public class DataInitializer implements ApplicationRunner {
         List<Badge> badges = seedBadges();
         List<Quest> quests = seedQuests(badges, places);
         seedRoutes(places);
+        enrichDemoMediaAndRatings();
         seedUserQuests(allUsers, quests, now);
         seedReviews(allUsers, places, now);
         seedUserBadges(allUsers, badges, now);
@@ -117,6 +118,58 @@ public class DataInitializer implements ApplicationRunner {
 
         log.info("Demo dataset ready: {} places, {} badges, {} quests, {} routes",
                 places.size(), badges.size(), quests.size(), routeRepository.count());
+    }
+
+    private void enrichDemoMediaAndRatings() {
+        List<Place> updatedPlaces = new ArrayList<>();
+        for (Place place : placeRepository.findByIsActiveTrue()) {
+            boolean dirty = false;
+            if (place.getPhotoUrl() == null || place.getPhotoUrl().isBlank()) {
+                place.setPhotoUrl(DemoMediaCatalog.resolvePlacePhotoUrl(place));
+                dirty = true;
+            }
+            if (place.getAvgRating() == null || place.getAvgRating() <= 0.0) {
+                place.setAvgRating(DemoMediaCatalog.deterministicDemoRating(place));
+                if (place.getReviewCount() == null || place.getReviewCount() <= 0) {
+                    place.setReviewCount(DemoMediaCatalog.deterministicReviewCount(place));
+                }
+                if (place.getPopularityScore() == null || place.getPopularityScore() <= 10) {
+                    place.setPopularityScore(DemoMediaCatalog.deterministicPopularityScore(place));
+                }
+                dirty = true;
+            }
+            if (dirty) {
+                updatedPlaces.add(place);
+            }
+        }
+        if (!updatedPlaces.isEmpty()) {
+            placeRepository.saveAll(updatedPlaces);
+            log.info("  Enriched media & ratings for {} active places", updatedPlaces.size());
+        }
+
+        List<Route> updatedRoutes = new ArrayList<>();
+        for (Route route : routeRepository.findByIsActiveTrue()) {
+            if (route.getThumbnailUrl() == null || route.getThumbnailUrl().isBlank()) {
+                route.setThumbnailUrl(DemoMediaCatalog.resolveRouteThumbnailUrl(route.getName()));
+                updatedRoutes.add(route);
+            }
+        }
+        if (!updatedRoutes.isEmpty()) {
+            routeRepository.saveAll(updatedRoutes);
+            log.info("  Enriched thumbnails for {} active routes", updatedRoutes.size());
+        }
+
+        List<Quest> updatedQuests = new ArrayList<>();
+        for (Quest quest : questRepository.findByIsActiveTrue()) {
+            if (quest.getThumbnailUrl() == null || quest.getThumbnailUrl().isBlank()) {
+                quest.setThumbnailUrl(DemoMediaCatalog.resolveQuestThumbnailUrl(quest.getTitle()));
+                updatedQuests.add(quest);
+            }
+        }
+        if (!updatedQuests.isEmpty()) {
+            questRepository.saveAll(updatedQuests);
+            log.info("  Enriched thumbnails for {} active quests", updatedQuests.size());
+        }
     }
 
     private User ensureDemoUser(LocalDateTime now) {
@@ -128,7 +181,7 @@ public class DataInitializer implements ApplicationRunner {
                     .lastName("Traveler")
                     .role(Role.TOURIST)
                     .level(5)
-                    .expPoints(4800)
+                    .expPoints(520)
                     .preferredLanguage("tr")
                     .build();
             User saved = userService.createUser(demo);

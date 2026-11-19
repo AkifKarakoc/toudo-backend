@@ -165,4 +165,34 @@ class AiChatServiceTest {
                 .contains("Kemeraltı Çarşısı")
                 .contains("Google Places API'den canlı olarak çekilen mekanlar:");
     }
+
+    @Test
+    void generateReply_fallsBackToDemoReply_whenLiveModelThrows() {
+        AiModelClient liveModel = mock(AiModelClient.class);
+        ChatKnowledgeService knowledgeService = new ChatKnowledgeService(placeRepository, routeRepository, questRepository);
+        AiChatService aiChatService = new AiChatService(liveModel, knowledgeService, chatPlacesService);
+
+        Place clockTower = Place.builder()
+                .name("İzmir Saat Kulesi")
+                .nameTr("İzmir Saat Kulesi")
+                .category("kule")
+                .avgRating(4.9)
+                .popularityScore(95)
+                .build();
+        when(placeRepository.findByIsActiveTrue()).thenReturn(List.of(clockTower));
+        when(routeRepository.findByIsActiveTrue()).thenReturn(List.of());
+        when(questRepository.findByIsActiveTrue()).thenReturn(List.of());
+        when(chatPlacesService.buildPlacesContext(anyString(), any(), any())).thenReturn("");
+        when(liveModel.generate(anyString())).thenThrow(new RuntimeException("401 Unauthorized"));
+
+        List<ChatMessage> conversation = List.of(
+                ChatMessage.builder().role("user").content("Saat Kulesi önerir misin?").build());
+
+        String reply = aiChatService.generateReply(conversation, "tr", Optional.empty(), Optional.empty());
+
+        assertThat(reply)
+                .contains("İzmir Saat Kulesi")
+                .contains("Demo Modu")
+                .doesNotContain("AI modeline bağlanılamadı");
+    }
 }

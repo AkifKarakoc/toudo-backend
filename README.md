@@ -33,7 +33,7 @@ Spring Boot REST API powering **TouDo**, an AI-assisted city guide and gamified 
 - **AI City Guide Chat (`demo` | `ollama` | `gemini`):**
   - Runs **out of the box in `demo` mode** with a deterministic database-grounded (RAG) assistant in English and Turkish — no external LLM or API key required.
   - Supports optional **Ollama** (via LangChain4j), **Google Gemini API**, and optional **Google Places API (New)** real-time context enrichment.
-- **Landmark Recognition:** Upload monument photos to identify landmarks via **Google Cloud Vision API**, with a graceful **PostGIS nearest-place fallback** when Vision is unconfigured in local development.
+- **Landmark Recognition:** A team-trained YOLO11 model recognizes 9 Izmir landmarks from photos. When the model doesn’t recognize the place, the backend falls back to the Google Cloud Vision API. In local development without a Vision key, it falls back to the nearest place in PostGIS.
 - **Authentication & Role-Based Security:** JWT access/refresh tokens, optional Google OAuth ID token login, and role separation (`TOURIST`, `CONTENT_EDITOR`, `MODERATOR`, `SUPER_ADMIN`).
 - **Media, Reviews, Todos & Notifications:** MinIO S3-compatible object storage, star ratings and comments, personal favorites and travel todos, and in-app notification feeds.
 
